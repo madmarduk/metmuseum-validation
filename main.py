@@ -1,6 +1,6 @@
 # TODO: Разработать модели данных для валидации ответов Pydantic. Модели должны соответствовать
 # структуре данных, возвращаемых API.
-# TODO: Модель для списка произведений искусства
+# TODO: Выбрать строки из модели, которые будут обязательными
 # Написать тесты с Pytest, которые вызывают API и проверяют:
     # TODO: Получение информации о произв-ии искусства по идентификатору
     # TODO: То, что API возвращает корректный HTTP статус
@@ -17,7 +17,7 @@
 import requests
 from datetime import datetime
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from random import randint
 
 class Artwork(BaseModel):
@@ -80,7 +80,11 @@ class Artwork(BaseModel):
     isTimelineWork: Optional[bool]
     GalleryNumber: Optional[str]
 
-def random_object_id():
+class ArtworksList(BaseModel):
+    total: int
+    objectIDs: List[int]
+
+def get_random_object_id():
     """
     Generates a random object ID by selecting a random ID from the list of available object IDs.
 
@@ -95,11 +99,15 @@ def random_object_id():
     return_id = obj_ids['objectIDs'][randint(1, len(obj_ids['objectIDs']))]
     return return_id
 
+def get_artworks():
+    """Returns validated list of objects in Museum"""
+    response = requests.get("https://collectionapi.metmuseum.org/public/collection/v1/objects")
+    artworks_list = ArtworksList.model_validate(response.json())
+    return artworks_list
 # Object request:
 # https://collectionapi.metmuseum.org/public/collection/v1/objects/[objectID]
 
-# TODO: Выбрать строки из модели, которые будут обязательными
-obj_id = random_object_id()
+obj_id = get_random_object_id()
 url = "https://collectionapi.metmuseum.org/public/collection/v1/objects/" + str(obj_id)
 response = requests.get(url)
 artwork_data = response.json()
