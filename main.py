@@ -1,10 +1,6 @@
-# TODO: Разработать модели данных для валидации ответов Pydantic. Модели должны соответствовать
-# структуре данных, возвращаемых API.
 # TODO: Выбрать строки из модели, которые будут обязательными
 # Написать тесты с Pytest, которые вызывают API и проверяют:
-    # TODO: Получение информации о произв-ии искусства по идентификатору
-    # TODO: То, что API возвращает корректный HTTP статус
-    # TODO: Убедиться, что возвр-мые данные соответствуют модели Pydantic для объекта
+# Получение информации о произв-ии искусства по идентификатору
     # TODO: Обработку запроса с несуществ-им идентификатором
 # Поиск произведений искусства (тоже тест с Pytest):
     # TODO: Поиск по ключевому слову возвращает коррект. результаты
@@ -19,6 +15,7 @@ from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional, List
 from random import randint
+
 
 class Artwork(BaseModel):
     objectID: int
@@ -80,36 +77,62 @@ class Artwork(BaseModel):
     isTimelineWork: Optional[bool]
     GalleryNumber: Optional[str]
 
+
 class ArtworksList(BaseModel):
     total: int
     objectIDs: List[int]
 
+
 def get_random_object_id():
-    """
-    Generates a random object ID by selecting a random ID from the list of available object IDs.
-
-    Returns:
-        str: The randomly selected object ID.
-
-    Raises:
-        requests.exceptions.RequestException: If there is an error making the API request.
-    """
+    """Returns a random object ID by selecting a random ID from the list of available object IDs."""
     obj_ids_response = requests.get("https://collectionapi.metmuseum.org/public/collection/v1/objects")
     obj_ids = obj_ids_response.json()
     return_id = obj_ids['objectIDs'][randint(1, len(obj_ids['objectIDs']))]
     return return_id
+
 
 def get_artworks():
     """Returns validated list of objects in Museum"""
     response = requests.get("https://collectionapi.metmuseum.org/public/collection/v1/objects")
     artworks_list = ArtworksList.model_validate(response.json())
     return artworks_list
-# Object request:
-# https://collectionapi.metmuseum.org/public/collection/v1/objects/[objectID]
 
-obj_id = get_random_object_id()
-url = "https://collectionapi.metmuseum.org/public/collection/v1/objects/" + str(obj_id)
-response = requests.get(url)
-artwork_data = response.json()
-artwork = Artwork.model_validate(artwork_data)
-#print(artwork)
+
+def get_artwork_object(obj_id):
+    """
+    Retrieves an artwork object from the Met Museum API based on the provided object ID.
+
+    Parameters:
+        obj_id (int): The ID of the artwork object to retrieve.
+
+    Returns:
+        response: The response object of an artwork from the API.
+
+    Raises:
+        requests.exceptions.RequestException: If there is an error making the API request.
+    """
+    url = "https://collectionapi.metmuseum.org/public/collection/v1/objects/" + str(obj_id)    
+    response = requests.get(url)
+    return response
+
+
+def validate_artwork():
+    """Returns validated artwork from response object."""
+    artwork_object = get_artwork_object(obj_id=get_random_object_id()) # response object
+    artwork_object_json = artwork_object.json()
+    artwork = Artwork.model_validate(artwork_object_json)
+    return artwork
+    
+
+# FIXME: Разобраться с тем, где должна стоять переменная для ID объекта (она должна быть одной и той же и для функции теста и для вызова в main)
+def test_api_status():
+    """Test whether API gives correct response."""
+    assert get_artwork_object(get_random_object_id()).status_code == 200
+
+
+def test_artwork_validation():
+    """Test whether artwork object could be validated."""
+    assert validate_artwork() is not None
+    
+
+print("kek")
