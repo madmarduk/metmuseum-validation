@@ -1,7 +1,6 @@
 # TODO: Выбрать строки из модели, которые будут обязательными
 # Написать тесты с Pytest, которые вызывают API и проверяют:
 # Получение информации о произв-ии искусства по идентификатору
-    # TODO: Обработку запроса с несуществ-им идентификатором
 # Поиск произведений искусства (тоже тест с Pytest):
     # TODO: Поиск по ключевому слову возвращает коррект. результаты
     # TODO: Структура ответа соответствует ожиданиями и валидируется с Pydantic
@@ -128,6 +127,12 @@ def validate_artwork():
 def test_api_status():
     """Test whether API gives correct response."""
     assert get_artwork_object(get_random_object_id()).status_code == 200
+
+def test_api_nonexistent_id():
+    # На подумать: в задании написано "Обработку запроса
+    #  с несуществ-им идентификатором". Может имеется в виду другое?
+    """Test case for non-existent ID."""
+    assert get_artwork_object(9999999).status_code == 404
 
 
 def test_artwork_validation():
