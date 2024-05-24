@@ -1,3 +1,4 @@
 /metmuseum-validation.code-workspace
 __pycache__/
 venv/
+log.txt

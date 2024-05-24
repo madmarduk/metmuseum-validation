@@ -1,13 +1,7 @@
 # TODO: Выбрать строки из модели, которые будут обязательными
-# Написать тесты с Pytest, которые вызывают API и проверяют:
-# Получение информации о произв-ии искусства по идентификатору
-# Поиск произведений искусства (тоже тест с Pytest):
-    # TODO: Поиск по ключевому слову возвращает коррект. результаты
-    # TODO: Структура ответа соответствует ожиданиями и валидируется с Pydantic
-    # TODO: Добавить логирование (запросов, ответов, ошибок)
 # Доп проверки:
-    # TODO: Ограничение на кол-во возвращаемых результатов
     # TODO: Работа фильтрации и сортировки результатов поиска (если предусмотрено API)
+# FIXME: Maybe cut back on using redundant temporary vars that are being replaced
 
 import requests
 import logging
@@ -15,6 +9,19 @@ from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional, List
 from random import randint
+
+# TODO: Разобраться....
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler('log.txt')
+console_handler = logging.StreamHandler()
+file_handler.setLevel(logging.INFO)
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
 
 
 class Artwork(BaseModel):
@@ -85,24 +92,60 @@ class ArtworksList(BaseModel):
 
 def get_random_object_id():
     """Returns a random object ID by selecting a random ID from the list of available object IDs."""
-    obj_ids_response = requests.get("https://collectionapi.metmuseum.org/public/collection/v1/objects")
-    obj_ids = obj_ids_response.json()
-    return_id = obj_ids['objectIDs'][randint(1, len(obj_ids['objectIDs']))]
-    return return_id
+    # FIXME: Просто предложение самому себе в будущем, но возможно здесь стоит обращаться к get_artworks() (но я не уверен, потом на подумать)
+    url = "https://collectionapi.metmuseum.org/public/collection/v1/objects"
+    try:
+        obj_ids_response = requests.get(url)
+        logger.info(f"Отправлен запрос списка объектов на сервер музея")
+        obj_ids_response.raise_for_status()
+        logger.info(f"Получен ответ от сервера музея")
+        obj_ids = obj_ids_response.json()
+        return_id = obj_ids['objectIDs'][randint(1, len(obj_ids['objectIDs']))]
+        logger.info(f"Получен случайный ID: {return_id}")
+        return return_id
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Ошибка при получении случайного ID: {e}")
+        raise
 
 
 def get_artworks():
-    """Returns validated list of objects in Museum"""
-    response = requests.get("https://collectionapi.metmuseum.org/public/collection/v1/objects")
-    artworks_list = ArtworksList.model_validate(response.json())
-    return artworks_list
+    """Retrieves list of artwork objects"""
+    url = "https://collectionapi.metmuseum.org/public/collection/v1/objects"
+    try:
+        response = requests.get(url)
+        logger.info(f"Отправлен запрос списка объектов на сервер музея")
+        response.raise_for_status()
+        logger.info(f"Получен ответ от сервера музея")
+        return response
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Ошибка при получении списка произведения искусств: {e}")
+
+
+def validate_artworks_list(artworks_list):
+    """
+    Validates a list of artworks.
+    
+    Args:
+        artworks_list (Response): The response object containing the list of artworks.
+    
+    Returns:
+        artworks: The validated list of artworks.
+    """
+    try:
+        artworks_list_json = artworks_list.json()
+        artworks = ArtworksList.model_validate(artworks_list_json)
+        logger.info(f"Успешная валидация списка объектов")
+        return artworks
+    except Exception as e:
+        logger.error(f"Ошибка валидации списка произведений искусства: {e}")
+
 
 
 def get_artwork_object(obj_id):
     """
     Retrieves an artwork object from the Met Museum API based on the provided object ID.
 
-    Parameters:
+    Args:
         obj_id (int): The ID of the artwork object to retrieve.
 
     Returns:
@@ -112,33 +155,57 @@ def get_artwork_object(obj_id):
         requests.exceptions.RequestException: If there is an error making the API request.
     """
     url = "https://collectionapi.metmuseum.org/public/collection/v1/objects/" + str(obj_id)    
-    response = requests.get(url)
-    return response
+    try:
+        response = requests.get(url)
+        logger.info(f"Отправлен запрос на сервер на получение объекта с ID {obj_id}")
+        response.raise_for_status()
+        logger.info(f"Получено произведение искусства с ID {obj_id}")
+        return response
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Ошибка при получении произведения искусства с ID {obj_id}")
+        raise
 
 
-def validate_artwork():
-    """Returns validated artwork from response object."""
-    artwork_object = get_artwork_object(obj_id=get_random_object_id()) # response object
-    artwork_object_json = artwork_object.json()
-    artwork = Artwork.model_validate(artwork_object_json)
-    return artwork
+def validate_artwork(artwork_object):
+    """
+    Validates an artwork object from response object.
+
+    Args:
+        artwork_object (Artwork): The artwork object to be validated.
+
+    Returns:
+        artwork: The validated artwork object.
+    """
+    try:
+        artwork_object_json = artwork_object.json()
+        artwork = Artwork.model_validate(artwork_object_json)
+        return artwork
+    except Exception as e:
+        logger.error(f"Ошибка валидации произведения искусства: {e}")
     
 
-# FIXME: Разобраться с тем, где должна стоять переменная для ID объекта (она должна быть одной и той же и для функции теста и для вызова в main)
-def test_api_status():
-    """Test whether API gives correct response."""
-    assert get_artwork_object(get_random_object_id()).status_code == 200
+def query_search(keyword):
+    """
+    Make a search request to API using given keyword.
 
-def test_api_nonexistent_id():
-    # На подумать: в задании написано "Обработку запроса
-    #  с несуществ-им идентификатором". Может имеется в виду другое?
-    """Test case for non-existent ID."""
-    assert get_artwork_object(9999999).status_code == 404
+    Args:
+        keyword (str): The keyword to search for.
+
+    Returns:
+        response (requests.Response): The response object containing the search results.
+    """
+    url = "https://collectionapi.metmuseum.org/public/collection/v1/search?q=" + str(keyword)
+    try:
+        response = requests.get(url)
+        logger.info(f"Отправлен запрос на поиск по запросу {keyword}")
+        response.raise_for_status()
+        logger.info(f"Поиск по '{keyword}' вернул {response.json().get('total')} результатов")
+        return response
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Ошибка при поиске по запросу '{keyword}: {e}")
+        raise
 
 
-def test_artwork_validation():
-    """Test whether artwork object could be validated."""
-    assert validate_artwork() is not None
-    
-
-print("kek")
+# url = "https://collectionapi.metmuseum.org/public/collection/v1/search?q=sunflowers"
+# response = requests.get(url)
+# print(response.json())
