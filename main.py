@@ -255,3 +255,7 @@ def query_search(q, isHighlight=None, title=None, tags=None, departmentId=None,
         logger.error(f"Ошибка при поиске по запросу '{q}: {e}")
         raise
 
+
+if __name__ == "__main__":
+    print("Usage: pytest")
+
