@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
-from typing import Optional, List
 from random import randint
+from typing import Optional, List
 
 import requests
 from pydantic import BaseModel
