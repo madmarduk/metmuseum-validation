@@ -1,23 +1,19 @@
-# TODO: Выбрать строки из модели, которые будут обязательными
-# Доп проверки:
-    # TODO: Работа фильтрации и сортировки результатов поиска (если предусмотрено API)
-# FIXME: Maybe cut back on using redundant temporary vars that are being replaced
-
-import requests
 import logging
 from datetime import datetime
-from pydantic import BaseModel
 from typing import Optional, List
 from random import randint
 
-# TODO: Разобраться....
+import requests
+from pydantic import BaseModel
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-file_handler = logging.FileHandler('log.txt')
+file_handler = logging.FileHandler("log.txt")
 console_handler = logging.StreamHandler()
 file_handler.setLevel(logging.INFO)
 console_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 file_handler.setFormatter(formatter)
 console_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
@@ -26,17 +22,17 @@ logger.addHandler(console_handler)
 
 class Artwork(BaseModel):
     objectID: int
-    isHighlight: Optional[bool]
+    isHighlight: bool
     accessionNumber: Optional[str]
     accessionYear: Optional[str]
-    isPublicDomain: Optional[bool]
-    primaryImage: Optional[str]
+    isPublicDomain: bool
+    primaryImage: str
     primaryImageSmall: Optional[str]
     additionalImages: Optional[list]
     constituents: Optional[list]
-    department: Optional[str]
-    objectName: Optional[str]
-    title: Optional[str]
+    department: str
+    objectName: str
+    title: str
     culture: Optional[str]
     period: Optional[str]
     dynasty: Optional[str]
@@ -91,8 +87,10 @@ class ArtworksList(BaseModel):
 
 
 def get_random_object_id():
-    """Returns a random object ID by selecting a random ID from the list of available object IDs."""
-    # FIXME: Просто предложение самому себе в будущем, но возможно здесь стоит обращаться к get_artworks() (но я не уверен, потом на подумать)
+    """
+    Returns a random object ID by selecting a random ID from the list of 
+    available object IDs.
+    """
     url = "https://collectionapi.metmuseum.org/public/collection/v1/objects"
     try:
         obj_ids_response = requests.get(url)
@@ -126,7 +124,8 @@ def validate_artworks_list(artworks_list):
     Validates a list of artworks.
     
     Args:
-        artworks_list (Response): The response object containing the list of artworks.
+        artworks_list (Response): The response object containing the
+        list of artworks.
     
     Returns:
         artworks: The validated list of artworks.
@@ -140,19 +139,16 @@ def validate_artworks_list(artworks_list):
         logger.error(f"Ошибка валидации списка произведений искусства: {e}")
 
 
-
 def get_artwork_object(obj_id):
     """
-    Retrieves an artwork object from the Met Museum API based on the provided object ID.
+    Retrieves an artwork object from the Met Museum API based on the provided
+    object ID.
 
     Args:
         obj_id (int): The ID of the artwork object to retrieve.
 
     Returns:
         response: The response object of an artwork from the API.
-
-    Raises:
-        requests.exceptions.RequestException: If there is an error making the API request.
     """
     url = "https://collectionapi.metmuseum.org/public/collection/v1/objects/" + str(obj_id)    
     try:
@@ -161,9 +157,9 @@ def get_artwork_object(obj_id):
         response.raise_for_status()
         logger.info(f"Получено произведение искусства с ID {obj_id}")
         return response
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         logger.error(f"Ошибка при получении произведения искусства с ID {obj_id}")
-        raise
+        return response        
 
 
 def validate_artwork(artwork_object):
@@ -182,30 +178,80 @@ def validate_artwork(artwork_object):
         return artwork
     except Exception as e:
         logger.error(f"Ошибка валидации произведения искусства: {e}")
-    
 
-def query_search(keyword):
+
+def query_search(q, isHighlight=None, title=None, tags=None, departmentId=None,
+                 isOnView=None, artistOrCulture=None, medium=None, hasImages=None,
+                 geoLocation=None, dateBegin=None, dateEnd=None):
     """
-    Make a search request to API using given keyword.
+    Sends a search query to the Met Museum Collection API and returns the response.
 
     Args:
-        keyword (str): The keyword to search for.
+        q (str): The search query.
+        isHighlight (Optional[str]): Whether to include highlighted objects
+        in the search results. Defaults to None.
+        title (Optional[str]): The title of the object to search for. 
+        Defaults to None.
+        tags (Optional[str]): The tags associated with the object to search
+        for. Defaults to None.
+        departmentId (Optional[str]): The department ID of the object to search
+        for. Defaults to None.
+        isOnView (Optional[str]): Whether the object is currently on view.
+        Defaults to None.
+        artistOrCulture (Optional[str]): Whether q is for artist or culture.
+        Defaults to None.
+        medium (Optional[str]): The medium of the object to search for.
+        Defaults to None.
+        hasImages (Optional[str]): Whether the object has images. 
+        Defaults to None.
+        geoLocation (Optional[str]): The geographic location of the object 
+        to search for. Defaults to None.
+        dateBegin (Optional[str]): The beginning date of the object to 
+        search for. Defaults to None.
+        dateEnd (Optional[str]): The ending date of the object to search for.
+        Defaults to None.
 
     Returns:
-        response (requests.Response): The response object containing the search results.
+        requests.Response: The response object containing the search results.
     """
-    url = "https://collectionapi.metmuseum.org/public/collection/v1/search?q=" + str(keyword)
+    params = {
+        'q': q,
+        'isHighlight': isHighlight,
+        'title': title,
+        'tags': tags,
+        'departmentId': departmentId,
+        'isOnView': isOnView,
+        'artistOrCulture': artistOrCulture,
+        'medium': medium,
+        'hasImages': hasImages,
+        'geoLocation': geoLocation,
+        'dateBegin': dateBegin,
+        'dateEnd': dateEnd
+    }
+    
+    # Something that needs to be said about query search using this API: there is
+    # a bug that has it's own issue in github that tracks back to the
+    # Oct 7, 2020 (https://github.com/metmuseum/openaccess/issues/36).
+    # The bug is simple: get request for search endpoint yields varying 
+    # results if you use different order of parameters. You can't really do
+    # anything about it, maybe use different variations of a search query
+    # function depending on which parameters are used. That would be pretty
+    # tedious work though, so as for me, I'll just leave my code as it is
+    # without considering this bug.
+
+    # Concatenate every parameter into a string in format of 
+    # [parameter]=[argument]& but skip parameter if it it's None.
+
+    filtered_params = {k: v for k, v in params.items() if v is not None}    
+    query_string = '&'.join(f'{k}={v}' for k, v in filtered_params.items())
+    url = f"https://collectionapi.metmuseum.org/public/collection/v1/search?{query_string}"
     try:
         response = requests.get(url)
-        logger.info(f"Отправлен запрос на поиск по запросу {keyword}")
+        logger.info(f"Отправлен запрос на поиск по запросу {q}")
         response.raise_for_status()
-        logger.info(f"Поиск по '{keyword}' вернул {response.json().get('total')} результатов")
+        logger.info(f"Поиск по '{q}' вернул {response.json().get('total')} результатов")
         return response
     except requests.exceptions.RequestException as e:
-        logger.error(f"Ошибка при поиске по запросу '{keyword}: {e}")
+        logger.error(f"Ошибка при поиске по запросу '{q}: {e}")
         raise
 
-
-# url = "https://collectionapi.metmuseum.org/public/collection/v1/search?q=sunflowers"
-# response = requests.get(url)
-# print(response.json())
