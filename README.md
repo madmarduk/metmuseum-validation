@@ -1,5 +1,8 @@
 # Metropolitan Museum of Art API responses validation and testing
-Validation of Metropolitan Museum of Art API responses.
+Validation of Metropolitan Museum of Art API responses by automated tests. 
+Main usage is by running pytest in directory of the repo. "main.py" file
+could be edited to run other API requests, "test_tests.py" can be edited
+to run test with other requests, too.
 
 Install
 =====
